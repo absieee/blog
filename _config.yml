@@ -1,0 +1,22 @@
+title: Abhishek TIL
+description: Notes on product, technology, and things learned the hard way.
+url: https://absieee.github.io
+baseurl: /personal.blog
+markdown: kramdown
+permalink: /:categories/:title/
+timezone: Europe/London
+
+collections:
+  pages:
+    output: true
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+  - scope:
+      path: ""
+    values:
+      layout: default

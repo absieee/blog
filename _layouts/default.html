@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+    <meta name="description" content="{{ page.description | default: site.description }}">
+    <link rel="icon" type="image/svg+xml" href="{{ '/favicon.svg' | relative_url }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Libre+Baskerville:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <p class="kicker">Abhishek's running notebook</p>
+        <div class="header-row">
+          <div>
+            <h1><a href="{{ '/' | relative_url }}">{{ site.title }}</a></h1>
+            <p class="intro">{{ site.description }}</p>
+          </div>
+          <nav class="site-nav" aria-label="Primary">
+            <a href="{{ '/' | relative_url }}">Latest</a>
+            <a href="{{ '/about/' | relative_url }}">About</a>
+            <a href="https://absieee.github.io/" target="_blank" rel="noreferrer">Homepage</a>
+          </nav>
+        </div>
+      </header>
+
+      <main class="content">
+        {{ content }}
+      </main>
+
+      <footer class="site-footer">
+        <p>Published with GitHub Pages. Written in Markdown. Kept intentionally simple.</p>
+      </footer>
+    </div>
+  </body>
+</html>
