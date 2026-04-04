@@ -1,14 +1,14 @@
-# Abhishek TIL
+# absieee.blog
 
 This repository contains a lightweight Jekyll blog designed to publish on GitHub Pages.
 
 ## Expected URL
 
-Because this repository is named `personal.blog`, the site will publish at:
+Because this repository should be named `absieee.blog`, the site will publish at:
 
-`https://absieee.github.io/personal.blog/`
+`https://absieee.github.io/absieee.blog/`
 
-If you want the shorter path `https://absieee.github.io/til/`, rename the repository to `til`.
+If the repository is still named something else on GitHub, rename it in the repository settings so the URL and `_config.yml` stay aligned.
 
 ## How to write a new post
 

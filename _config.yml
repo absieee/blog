@@ -1,7 +1,7 @@
-title: Abhishek TIL
+title: absieee.blog
 description: Notes on product, technology, and things learned the hard way.
 url: https://absieee.github.io
-baseurl: /personal.blog
+baseurl: /absieee.blog
 markdown: kramdown
 permalink: /:categories/:title/
 timezone: Europe/London
