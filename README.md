@@ -1,12 +1,12 @@
-# absieee.blog
+# blog
 
 This repository contains a lightweight Jekyll blog designed to publish on GitHub Pages.
 
 ## Expected URL
 
-Because this repository should be named `absieee.blog`, the site will publish at:
+Because this repository should be named `blog`, the site will publish at:
 
-`https://absieee.github.io/absieee.blog/`
+`https://absieee.github.io/blog/`
 
 If the repository is still named something else on GitHub, rename it in the repository settings so the URL and `_config.yml` stay aligned.
 

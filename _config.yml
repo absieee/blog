@@ -1,7 +1,7 @@
-title: absieee.blog
+title: blog
 description: Notes on product, technology, and things learned the hard way.
 url: https://absieee.github.io
-baseurl: /absieee.blog
+baseurl: /blog
 markdown: kramdown
 permalink: /:categories/:title/
 timezone: Europe/London
