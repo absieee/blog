@@ -6,6 +6,9 @@ markdown: kramdown
 permalink: /:categories/:title/
 timezone: Europe/London
 
+plugins:
+  - jekyll-feed
+
 collections:
   pages:
     output: true
