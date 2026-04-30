@@ -1,13 +1,11 @@
 ---
 title: Latest Notes
-description: Short notes on product, systems, and ideas worth keeping.
+description: Short notes on product, learnings, and ideas worth keeping.
 ---
 
 ## What this is
 
 This is my TIL-style blog: short notes, lessons learned, and occasional longer thoughts on product, technology, and building things.
-
-## Start here
 
 {% assign latest_posts = site.posts %}
 {% for post in latest_posts %}
