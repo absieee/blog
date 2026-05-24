@@ -2,7 +2,7 @@
 title: PM Toolbox Markdown Editor
 date: 2026-04-29 23:38:00 +0100
 categories: [til]
-summary: An Obsidian like md editor for Cursor.
+summary: an Obsidian like md editor for Cursor
 ---
 
 TIL there exists something called [PM Toolbox](https://pmtoolbox.app/)
