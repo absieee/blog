@@ -25,17 +25,21 @@ what makes it different is that it isn't just trying to be a chat window with a 
 
     ![strawberry workflows]({{ site.baseurl }}/assets/images/2026-05-24-strawberry/strawberry-workflows.jpg)
 
-the architecture above (brain + skills + workflows) is what lets all three stitched-together pieces work in concert. and even if you want to argue it isn't *really* agentic under the hood - honestly, it doesn't matter. it feels like it is, and that's the bit that counts and led to my my "holy shit" moment
+the architecture above (brain + skills + workflows) is what lets all three stitched-together pieces work in concert. and even if you want to argue it isn't *really* agentic under the hood - honestly, it doesn't matter. 
 
-it isn't simply calling a model on every keystroke - it's pulling from personalised memory, connecting the right tools (Slack, Mail, CRMs etc.), dispatching the *right* skill, and only invoking heavyweight reasoning when it actually needs to; that's the same architectural insight that makes agents feel snappy instead of laggy, and i've never seen it applied to a browser before.
+it *feels* like it is, and that's the bit that counts and led to my "holy shit" moment about an hour ago
 
-and honestly? for the kind of research-y, multi-tab, "i need to research into this industry/topic and then absorb all I can about it" workflow i do as a PM all day, this might already be replacing [perplexity](https://www.perplexity.ai/) or Google for me. 
+the way i understood it, it isn't simply calling a model on every keystroke - it's pulling from personalised memory that strawberry is getting by you as the user giving permission to connect the right tools (Slack, e-mail, CRMs etc.), dispatching the *right* skill, and (by the looks of it) only invoking heavyweight reasoning when it actually needs to; that's the same architectural insight that makes agents feel snappy 🫰🏼 instead of laggy 🐌, and i've never seen it applied to a browser before. applied well, that is.
 
-see, perplexity is brilliant as a search-answer engine, but it lives in its own walled garden. 
-strawberry is meeting me where i already am - in the browser, on real pages, with *real* context about me as an individual - and just gets on with it.
+and honestly? for the kind of research-y, multi-tab, "i need to understand this industry/topic and absorb all I can about it" workflow i do as a PM all day, this might already be replacing [perplexity](https://www.perplexity.ai/) or Google for me. 
 
-i'll come back to this once the honeymoon wears off and write a more sober take but right now, i'm fully in the "where has this been all my life" phase.
+see, perplexity is brilliant as a search-answer engine, but it lives in its own walled garden. in fact, i haven't touched it in a few months now.  
+strawberry, however, is meeting me where i already am - in the browser, on real pages, with *real* context about me as an individual - and just gets on with what i need getting done.
+
+what more do you want, eh?
+
+i'm sure i'll come back to this once the honeymoon wears off and write a more sober take but right now, i'm fully in the "where has this been all my life" phase.
 
 hats off to you Charles Maddock and team 🫡
 
-p.s. what i said on linked in still stands - even on a 16 GB M4, I immediately experienced slowdown and dare i say, a lag?, during just the onboarding phase...might be something you guys want to look into!
+p.s. what i said on linked in still stands - even on a 16 GB M4, i immediately experienced slowdown and dare i say a lag(?), during the onboarding phase itself...might be something you guys want to take a peek at!
