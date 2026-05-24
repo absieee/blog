@@ -134,6 +134,16 @@ a {
   max-width: 42rem;
 }
 
+.post-body img,
+.content img {
+  display: block;
+  max-width: 42rem;
+  width: 100%;
+  height: auto;
+  margin: 1.25rem 0;
+  border-radius: 4px;
+}
+
 .post-body code,
 .content code {
   padding: 0.12rem 0.35rem;
