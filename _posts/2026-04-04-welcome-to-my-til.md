@@ -1,7 +1,6 @@
 ---
 title: Welcome to Abhi's blog
 date: 2026-04-04 11:00:00 +0100
-categories: [notes]
 summary: Why I started this blog and what I want it to be useful for.
 ---
 
