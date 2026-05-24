@@ -22,3 +22,4 @@ Most posts should stay short. If something wants to become a proper essay, it ca
 - `product`
 - `engineering`
 - `notes`
+- `til`
