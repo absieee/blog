@@ -12,11 +12,19 @@ plugins:
 collections:
   pages:
     output: true
+  notes:
+    output: true
+    permalink: /notes/:title/
 
 defaults:
   - scope:
       path: ""
       type: posts
+    values:
+      layout: post
+  - scope:
+      path: ""
+      type: notes
     values:
       layout: post
   - scope:

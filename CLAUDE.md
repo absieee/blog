@@ -13,6 +13,7 @@ This blog is written by me. I use Claude to move faster — drafting, editing, s
 ## Posts
 
 - Posts live in `_posts/` with the filename pattern `YYYY-MM-DD-slug.md`.
+- Short notes live in `_notes/` (a Jekyll collection, served at `/notes/<slug>/`) and are merged into the homepage and category lists.
 - Images live in `assets/images/YYYY-MM-DD-slug/` and are referenced with `{{ site.baseurl }}/assets/images/...`.
 - Spellcheck runs in CI via `.github/workflows/typos.yml` and locally via `.git/hooks/pre-commit`.
 
