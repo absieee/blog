@@ -1,0 +1,47 @@
+name: Send to Substack
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["_posts/**", "_notes/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "substack"
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install python-substack
+        run: pip install python-substack==0.10.0
+
+      - name: Send new posts and notes
+        env:
+          SUBSTACK_COOKIES: ${{ secrets.SUBSTACK_COOKIES }}
+          SUBSTACK_PUBLICATION_URL: ${{ secrets.SUBSTACK_PUBLICATION_URL }}
+        run: python .github/scripts/substack_sync.py
+
+      - name: Record what was sent
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898666+github-actions[bot]@users.noreply.github.com"
+          git add .substack-sent.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record Substack sync"
+            git pull --rebase
+            git push
+          fi
