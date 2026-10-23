@@ -1,0 +1,15 @@
+{
+  "useMarkdownLinks": true,
+  "newLinkFormat": "absolute",
+  "attachmentFolderPath": "assets/images",
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "_posts",
+  "userIgnoreFilters": [
+    "_site/",
+    "_layouts/",
+    "_includes/",
+    "assets/css/",
+    "assets/html/"
+  ]
+}

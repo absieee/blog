@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Claude Code JSONL — Main Thread (Non-Subagent)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Menlo', 'Courier New', monospace;
+    font-size: 13px;
+    padding: 32px;
+    max-width: 1400px;
+  }
+  h1 { color: #e6edf3; font-size: 18px; margin-bottom: 4px; font-weight: 600; }
+  .subtitle { color: #6e7681; font-size: 11px; margin-bottom: 8px; }
+  .vs-badge {
+    display: inline-block;
+    background: #1a2233;
+    border: 1px solid #1f6feb;
+    color: #58a6ff;
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 3px 10px;
+    margin-bottom: 24px;
+  }
+
+  /* ── Stats grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .stat-card .stat-label { font-size: 10px; color: #6e7681; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+  .stat-card .stat-value { font-size: 20px; font-weight: 700; color: #e6edf3; }
+  .stat-card .stat-sub { font-size: 10px; color: #8b949e; margin-top: 2px; line-height: 1.4; }
+  .stat-card.green  { border-color: #238636; }
+  .stat-card.blue   { border-color: #1f6feb; }
+  .stat-card.red    { border-color: #da3633; }
+  .stat-card.orange { border-color: #7a5608; }
+  .stat-card.purple { border-color: #553086; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-size: 14px;
+    color: #e6edf3;
+    font-weight: 700;
+    margin: 32px 0 10px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 7px;
+  }
+
+  /* ── Timeline ── */
+  .timeline {
+    position: relative;
+    padding-left: 24px;
+    border-left: 2px solid #21262d;
+  }
+  .tl-entry {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #21262d;
+    background: #0d1117;
+  }
+  .tl-entry::before {
+    content: '';
+    position: absolute;
+    left: -31px;
+    top: 16px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #30363d;
+    background: #0d1117;
+  }
+
+  /* Colour-coded by type */
+  .tl-hook_success      { border-color: #238636; background: #0d1f12; }
+  .tl-hook_success::before { border-color: #238636; background: #238636; }
+  .tl-hook_additional_context { border-color: #2ea043; background: #0d1f12; }
+  .tl-hook_additional_context::before { border-color: #2ea043; background: #0d1f12; }
+  .tl-user              { border-color: #388bfd; background: #0c1929; }
+  .tl-user::before      { border-color: #388bfd; background: #388bfd; }
+  .tl-user-meta         { border-color: #30363d; background: #0d1117; opacity: 0.7; }
+  .tl-user-meta::before { border-color: #484f58; background: #484f58; }
+  .tl-assistant         { border-color: #6e40c9; background: #130b27; }
+  .tl-assistant::before { border-color: #6e40c9; background: #6e40c9; }
+  .tl-assistant-error   { border-color: #da3633; background: #200a0a; }
+  .tl-assistant-error::before { border-color: #da3633; background: #da3633; }
+  .tl-deferred_tools    { border-color: #7a5608; background: #1a1200; }
+  .tl-deferred_tools::before { border-color: #d29922; background: #d29922; }
+  .tl-agent_listing     { border-color: #7a5608; background: #1a1200; }
+  .tl-agent_listing::before { border-color: #d29922; background: #1a1200; }
+  .tl-skill_listing     { border-color: #553086; background: #100a1f; }
+  .tl-skill_listing::before { border-color: #8b5cf6; background: #8b5cf6; }
+  .tl-system-error      { border-color: #da3633; background: #1a0808; }
+  .tl-system-error::before { border-color: #da3633; background: #da3633; }
+  .tl-system-duration   { border-color: #30363d; background: #0d1117; }
+  .tl-system-duration::before { border-color: #484f58; background: #0d1117; }
+  .tl-metadata          { border-color: #21262d; background: #0d1117; opacity: 0.6; }
+  .tl-metadata::before  { border-color: #21262d; background: #21262d; }
+  .tl-last-prompt       { border-color: #21262d; background: #111318; }
+  .tl-last-prompt::before { border-color: #484f58; background: #21262d; }
+  .tl-permission        { border-color: #21262d; background: #111318; }
+  .tl-permission::before { border-color: #484f58; background: #21262d; }
+  .tl-ai-title          { border-color: #21262d; background: #111318; }
+  .tl-ai-title::before  { border-color: #484f58; background: #21262d; }
+  .tl-ide-file          { border-color: #1f6feb; background: #0c1929; }
+  .tl-ide-file::before  { border-color: #1f6feb; background: #0c1929; }
+  .tl-snapshot          { border-color: #21262d; background: #0d1117; opacity: 0.5; }
+  .tl-snapshot::before  { border-color: #21262d; background: #21262d; }
+
+  .tl-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #6e7681;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tl-type .badge {
+    display: inline-block;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .badge-hook    { background: #1a3a1a; color: #56d364; border: 1px solid #238636; }
+  .badge-user    { background: #0c1929; color: #79c0ff; border: 1px solid #1f6feb; }
+  .badge-asst    { background: #130b27; color: #c084fc; border: 1px solid #553086; }
+  .badge-asst-err{ background: #200a0a; color: #ffa198; border: 1px solid #da3633; }
+  .badge-attach  { background: #1a1200; color: #d29922; border: 1px solid #7a5608; }
+  .badge-skill   { background: #100a1f; color: #a371f7; border: 1px solid #553086; }
+  .badge-system  { background: #1a0808; color: #f85149; border: 1px solid #da3633; }
+  .badge-meta    { background: #161b22; color: #8b949e; border: 1px solid #30363d; }
+
+  .tl-body { font-size: 11px; color: #c9d1d9; line-height: 1.6; }
+  .tl-body code {
+    background: rgba(255,255,255,0.07);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 10px;
+  }
+  .tl-body .field { color: #8b949e; }
+  .tl-body .val   { color: #e6edf3; }
+  .tl-body .note  { color: #6e7681; font-style: italic; }
+  .tl-body .warn  { color: #d29922; }
+  .tl-body .err   { color: #f85149; }
+  .tl-body .good  { color: #56d364; }
+  .tl-body .blue  { color: #79c0ff; }
+  .tl-body pre {
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-top: 6px;
+    font-size: 10px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #8b949e;
+    border-left: 2px solid #30363d;
+  }
+  .turn-label {
+    grid-column: 1/-1;
+    font-size: 11px;
+    color: #6e7681;
+    text-align: center;
+    padding: 6px 0;
+    border-top: 1px dashed #30363d;
+    margin: 8px -14px 8px;
+  }
+  .uuid-chain {
+    font-size: 10px;
+    color: #30363d;
+    margin-top: 4px;
+  }
+  .uuid-chain span { color: #484f58; }
+
+  /* ── Legend ── */
+  .legend {
+    margin-top: 40px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .legend h2 { font-size: 13px; color: #e6edf3; margin-bottom: 12px; grid-column: 1/-1; }
+  .legend-section h3 { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .legend-item { margin-bottom: 10px; line-height: 1.5; }
+  .legend-item strong { color: #e6edf3; }
+  .legend-item .desc { color: #8b949e; font-size: 11px; }
+  .tag-inline {
+    display: inline-block;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #30363d;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10px;
+    color: #8b949e;
+    font-family: monospace;
+  }
+
+  /* ── Insight box ── */
+  .insight {
+    margin-top: 24px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 3px solid #58a6ff;
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #8b949e;
+  }
+  .insight strong { color: #e6edf3; }
+  .insight code { background: rgba(255,255,255,0.06); border-radius: 3px; padding: 1px 4px; font-size: 11px; }
+
+  /* Hook flow diagram */
+  .hook-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 12px 0;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .hf-box {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 10px;
+    color: #8b949e;
+    text-align: center;
+    min-width: 120px;
+  }
+  .hf-box .hf-title { color: #e6edf3; font-weight: 700; font-size: 11px; margin-bottom: 2px; }
+  .hf-arrow { color: #388bfd; font-size: 14px; padding: 0 4px; }
+  .hf-box.green { border-color: #238636; background: #0d1f12; }
+  .hf-box.green .hf-title { color: #56d364; }
+  .hf-box.blue  { border-color: #1f6feb; background: #0c1929; }
+  .hf-box.blue  .hf-title { color: #79c0ff; }
+  .hf-box.purple { border-color: #553086; background: #100a1f; }
+  .hf-box.purple .hf-title { color: #c084fc; }
+</style>
+</head>
+<body>
+
+<h1>Claude Code JSONL — Main Thread (Non-Subagent)</h1>
+<p class="subtitle">file: 6edf9a61-6106-410d-a819-ba9a5ba0d6ac.jsonl · session with auth + rate-limit errors, no successful API call</p>
+<div class="vs-badge">isSidechain: false for all entries — contrast with the subagent file where it's always true</div>
+
+<!-- ── Stats ── -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total entries</div>
+    <div class="stat-value">42</div>
+    <div class="stat-sub">vs 115 in the subagent file</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Entry types</div>
+    <div class="stat-value">8</div>
+    <div class="stat-sub">user · assistant · attachment · system · file-history-snapshot · last-prompt · permission-mode · ai-title</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">user entries</div>
+    <div class="stat-value">12</div>
+    <div class="stat-sub">human prompts + /slash commands + local-command output</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-label">assistant entries</div>
+    <div class="stat-value">3</div>
+    <div class="stat-sub">all synthetic (model: "&lt;synthetic&gt;") — API errors, zero real tokens</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">system entries</div>
+    <div class="stat-value">5</div>
+    <div class="stat-sub">2× api_error · 3× turn_duration</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">attachment entries</div>
+    <div class="stat-value">8</div>
+    <div class="stat-sub">hook_success · hook_additional_context · 3× deferred_tools_delta · agent_listing_delta · skill_listing · opened_file_in_ide</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-label">Unique promptIds</div>
+    <div class="stat-value">5</div>
+    <div class="stat-sub">same prompt attempted 3× (retries after auth fail + rate limit). Also /model and /exit slash commands each get their own promptId</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Unique requestIds</div>
+    <div class="stat-value">3</div>
+    <div class="stat-sub">3 failed HTTP calls to Anthropic API</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Real tokens consumed</div>
+    <div class="stat-value">0</div>
+    <div class="stat-sub">all assistant entries have usage: 0 — synthetic error messages cost nothing</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">sourceToolAssistantUUIDs</div>
+    <div class="stat-value">0</div>
+    <div class="stat-sub">no tool calls ever happened (session never got past auth)</div>
+  </div>
+</div>
+
+<!-- ── Hook + Context Injection Explained ── -->
+<div class="section-title">Where do the &lt;EXTREMELY_IMPORTANT&gt; and &lt;system-reminder&gt; tags come from?</div>
+
+<div class="hook-flow">
+  <div class="hf-box green">
+    <div class="hf-title">settings.json hook</div>
+    SessionStart event triggers<br><code>run-hook.cmd session-start</code>
+  </div>
+  <div class="hf-arrow">→</div>
+  <div class="hf-box green">
+    <div class="hf-title">hook_success attachment</div>
+    stdout contains JSON with<br><code>hookSpecificOutput.additionalContext</code><br>holding the raw skill content
+  </div>
+  <div class="hf-arrow">→</div>
+  <div class="hf-box green">
+    <div class="hf-title">hook_additional_context attachment</div>
+    Harness extracts that content<br>and stores it separately, ready<br>to inject into Claude's system prompt
+  </div>
+  <div class="hf-arrow">→</div>
+  <div class="hf-box blue">
+    <div class="hf-title">&lt;system-reminder&gt; in prompt</div>
+    Claude sees it as a system-level<br>reminder block — not a user message.<br>Tags like <code>&lt;EXTREMELY_IMPORTANT&gt;</code><br>come from the skill's own SKILL.md text.
+  </div>
+</div>
+
+<p style="color:#6e7681;font-size:11px;margin-top:8px;">
+  The <strong style="color:#e6edf3;">skill_listing attachment</strong> (type: "skill_listing") is separate — it's a catalogue of available skill names + descriptions injected into Claude's context so it knows what skills exist.
+  The <strong style="color:#e6edf3;">hook_additional_context</strong> contains the full text of the <em>using-superpowers</em> skill (the one that always fires at session start), including all the <code>&lt;EXTREMELY_IMPORTANT&gt;</code> wrapper tags that come directly from within that skill's markdown file.
+</p>
+
+<!-- ── Full Timeline ── -->
+<div class="section-title">Full Entry Timeline — every entry in order</div>
+<p style="color:#6e7681;font-size:11px;margin-bottom:14px;">Each block = one JSONL entry. Colour = entry type. Indentation indicates parentUuid chain direction.</p>
+
+<div class="timeline">
+
+  <!-- 1: last-prompt -->
+  <div class="tl-entry tl-last-prompt">
+    <div class="tl-type"><span class="badge badge-meta">last-prompt</span> <span>No parentUuid — session bookmark</span></div>
+    <div class="tl-body">
+      <span class="field">leafUuid:</span> <span class="val">d2cfdb7d…</span> &nbsp;·&nbsp; <span class="field">sessionId:</span> <span class="val">6edf9a61…</span><br>
+      <span class="note">Written at session open to record the most-recent visible message. Used by the harness to resume a session and scroll to the right place in the UI. Not part of the conversation chain (no uuid of its own in the chain).</span>
+    </div>
+  </div>
+
+  <!-- 2: permission-mode -->
+  <div class="tl-entry tl-permission">
+    <div class="tl-type"><span class="badge badge-meta">permission-mode</span> <span>Session-level metadata</span></div>
+    <div class="tl-body">
+      <span class="field">permissionMode:</span> <span class="warn">bypassPermissions</span><br>
+      <span class="note">Records what permission mode was active. bypassPermissions = all tool calls auto-approved (no prompts). Stored so the harness can restore it on resume. Not part of the message chain.</span>
+    </div>
+  </div>
+
+  <!-- 3: attachment — hook_success -->
+  <div class="tl-entry tl-hook_success">
+    <div class="tl-type"><span class="badge badge-hook">attachment · hook_success</span> <span>parentUuid: null ← first in chain</span></div>
+    <div class="tl-body">
+      <span class="field">uuid:</span> <span class="val">7051249f…</span><br>
+      <span class="field">attachment.hookName:</span> <span class="good">SessionStart:startup</span><br>
+      <span class="field">attachment.hookEvent:</span> <span class="val">SessionStart</span><br>
+      <span class="field">attachment.command:</span> <code>"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start</code><br>
+      <span class="field">attachment.exitCode:</span> <span class="good">0</span> &nbsp;·&nbsp; <span class="field">durationMs:</span> <span class="val">428</span><br>
+      <span class="field">attachment.stdout:</span> JSON blob containing <code>hookSpecificOutput.additionalContext</code><br>
+      <br>
+      <span class="warn">← This is the raw hook execution log.</span> The stdout is a JSON string containing the full text of the <em>using-superpowers</em> skill wrapped in <code>&lt;EXTREMELY_IMPORTANT&gt;</code> tags. The harness reads this and creates the next entry from it.
+    </div>
+  </div>
+
+  <!-- 4: attachment — hook_additional_context -->
+  <div class="tl-entry tl-hook_additional_context">
+    <div class="tl-type"><span class="badge badge-hook">attachment · hook_additional_context</span> <span>parentUuid: 7051249f… ← the hook_success</span></div>
+    <div class="tl-body">
+      <span class="field">uuid:</span> <span class="val">d2cfdb7d…</span> <span class="note">(this is also the leafUuid in last-prompt)</span><br>
+      <span class="field">attachment.hookName:</span> <span class="good">SessionStart</span><br>
+      <span class="field">attachment.content:</span> array containing the full skill text as a string<br>
+      <br>
+      <span class="warn">← This is the derived, cleaned-up form of the hook output.</span> The harness extracts <code>additionalContext</code> from the hook stdout and stores it here. This content gets injected into Claude's system prompt as a <code>&lt;system-reminder&gt;</code> block — that's what Claude actually reads. The <code>&lt;EXTREMELY_IMPORTANT&gt;</code> tags are part of the skill's own markdown text inside SKILL.md, not added by the harness.
+      <pre>content[0] starts with:
+"&lt;EXTREMELY_IMPORTANT&gt;
+You have superpowers.
+
+**Below is the full content of your 'superpowers:using-superpowers' skill...**
+..."</pre>
+    </div>
+  </div>
+
+  <!-- 5: file-history-snapshot -->
+  <div class="tl-entry tl-snapshot">
+    <div class="tl-type"><span class="badge badge-meta">file-history-snapshot</span> <span>No parentUuid — out-of-band metadata</span></div>
+    <div class="tl-body">
+      <span class="field">messageId:</span> <span class="val">d961d874…</span> &nbsp;·&nbsp; <span class="field">trackedFileBackups:</span> {}<br>
+      <span class="note">Written just before a user prompt is processed. Tracks the state of any files Claude has edited so the harness can offer undo. messageId matches the upcoming user entry's uuid. Empty here because no files have been touched yet.</span>
+    </div>
+  </div>
+
+  <!-- 6: user — first real prompt -->
+  <div class="tl-entry tl-user">
+    <div class="tl-type"><span class="badge badge-user">user</span> <span>parentUuid: d2cfdb7d… ← hook_additional_context</span></div>
+    <div class="tl-body">
+      <span class="field">uuid:</span> <span class="val">d961d874…</span><br>
+      <span class="field">promptId:</span> <span class="val">56bc6023…</span> ← first attempt at this prompt<br>
+      <span class="field">permissionMode:</span> <span class="warn">bypassPermissions</span> ← recorded on each prompt entry too<br>
+      <span class="field">isSidechain:</span> <span class="good">false</span><br>
+      <span class="field">message.content:</span> <span class="val">"update the pipeline with these decisions: got a decline for the amex role on June 22"</span><br>
+      <span class="note">Plain string content — genuine human message, not a tool result. This is what Claude will respond to.</span>
+    </div>
+  </div>
+
+  <!-- 7: attachment — deferred_tools_delta (first) -->
+  <div class="tl-entry tl-deferred_tools">
+    <div class="tl-type"><span class="badge badge-attach">attachment · deferred_tools_delta</span> <span>parentUuid: d961d874… ← user prompt</span></div>
+    <div class="tl-body">
+      <span class="field">addedNames:</span> 47 tool names including CronCreate, TaskCreate, WebFetch, all mcp__github__* tools<br>
+      <span class="field">pendingMcpServers:</span> [] ← none pending yet<br>
+      <br>
+      <span class="note">Tools are registered lazily — not all available at session start. This delta says "these tools are now available (deferred — schemas not loaded yet)." Claude sees them in the system prompt as a list but must call ToolSearch to get their full schemas before invoking them. Think of it as a tool directory, not a loaded toolbox.</span>
+    </div>
+  </div>
+
+  <!-- 8: attachment — agent_listing_delta -->
+  <div class="tl-entry tl-agent_listing">
+    <div class="tl-type"><span class="badge badge-attach">attachment · agent_listing_delta</span></div>
+    <div class="tl-body">
+      <span class="field">addedTypes:</span> claude, claude-code-guide, Explore, gen-cheatsheet, gen-prototype-ideas, general-purpose, Plan, prep-hiring-manager, recruiter, research, statusline-setup, story-bank, tyler-cv-tailor (13 agents)<br>
+      <span class="field">isInitial:</span> true<br>
+      <br>
+      <span class="note">The list of named subagent types Claude can spawn via the Agent tool. Injected into Claude's context as a &lt;system-reminder&gt;. These come from agent definition files in the superpowers plugin, not from SKILL.md.</span>
+    </div>
+  </div>
+
+  <!-- 9: attachment — skill_listing -->
+  <div class="tl-entry tl-skill_listing">
+    <div class="tl-type"><span class="badge badge-skill">attachment · skill_listing</span></div>
+    <div class="tl-body">
+      <span class="field">skillCount:</span> 35 &nbsp;·&nbsp; <span class="field">isInitial:</span> true<br>
+      <span class="field">names:</span> make-me-an-expert, pipeline, recruiter, gen-prototype-ideas, prep-hiring-manager, research, gen-cheatsheet, tailor-cv, story-bank, superpowers:*, update-config, keybindings-help, verify, code-review, fewer-permission-prompts, loop, schedule, claude-api, run, init, review, security-review<br>
+      <br>
+      <span class="note">The catalogue of available skills — names + one-line descriptions from each skill's SKILL.md frontmatter. This is what populates the "Available skills" list in &lt;system-reminder&gt;. Claude uses this to know which skills exist and when to invoke them. Full skill content is only loaded on demand when Claude calls the Skill tool.</span>
+    </div>
+  </div>
+
+  <!-- 10: attachment — opened_file_in_ide -->
+  <div class="tl-entry tl-ide-file">
+    <div class="tl-type"><span class="badge badge-attach">attachment · opened_file_in_ide</span></div>
+    <div class="tl-body">
+      <span class="field">filename:</span> <code>/data/rightmove/status.md</code><br>
+      <span class="note">The IDE extension tells Claude which file is currently open in the editor. Claude can use this as implicit context ("the user is looking at status.md") without the user having to mention it.</span>
+    </div>
+  </div>
+
+  <!-- 11: system — api_error (401) -->
+  <div class="tl-entry tl-system-error">
+    <div class="tl-type"><span class="badge badge-system">system · api_error</span> <span>parentUuid: 223af536…</span></div>
+    <div class="tl-body">
+      <span class="field">error.status:</span> <span class="err">401 authentication_error</span><br>
+      <span class="field">error.message:</span> "Invalid authentication credentials"<br>
+      <span class="field">retryAttempt:</span> 1 &nbsp;·&nbsp; <span class="field">maxRetries:</span> 10 &nbsp;·&nbsp; <span class="field">retryInMs:</span> 587ms<br>
+      <span class="field">requestId:</span> req_011CcL8oxmDT…<br>
+      <br>
+      <span class="note">The harness logs every failed API call as a system entry before retrying. It will retry up to 10 times. The 401 here is because the API key had expired/was invalid — session started before /login was run.</span>
+    </div>
+  </div>
+
+  <!-- 12: system — api_error (401 retry 2) -->
+  <div class="tl-entry tl-system-error">
+    <div class="tl-type"><span class="badge badge-system">system · api_error</span> <span>parentUuid: 4ad000d7… ← previous error</span></div>
+    <div class="tl-body">
+      <span class="field">error.status:</span> <span class="err">401</span> &nbsp;·&nbsp; <span class="field">retryAttempt:</span> 2 &nbsp;·&nbsp; <span class="field">retryInMs:</span> 1,054ms<br>
+      <span class="note">Second retry — exponential backoff. After maxRetries the harness gives up and generates a synthetic error message instead.</span>
+    </div>
+  </div>
+
+  <!-- 13: assistant — synthetic 401 error message -->
+  <div class="tl-entry tl-assistant-error">
+    <div class="tl-type"><span class="badge badge-asst-err">assistant (synthetic error)</span> <span>parentUuid: 35288b05… ← last api_error</span></div>
+    <div class="tl-body">
+      <span class="field">uuid:</span> <span class="val">d846727a…</span><br>
+      <span class="field">message.model:</span> <span class="err">"&lt;synthetic&gt;"</span> ← not a real Claude response<br>
+      <span class="field">message.stop_reason:</span> <span class="warn">"stop_sequence"</span> ← synthetic, not "end_turn" or "tool_use"<br>
+      <span class="field">message.usage:</span> all zeros — no tokens billed<br>
+      <span class="field">message.content[0].text:</span> <span class="val">"Please run /login · API Error: 401 Invalid authentication credentials"</span><br>
+      <span class="field">isApiErrorMessage:</span> true &nbsp;·&nbsp; <span class="field">error:</span> "authentication_failed"<br>
+      <br>
+      <span class="note">The harness fabricates an assistant entry so the conversation chain stays intact and the error is visible in the UI. The text is a formatted error message, not Claude's output. model: "&lt;synthetic&gt;" is the signal that this is harness-generated.</span>
+    </div>
+  </div>
+
+  <!-- 14: system — turn_duration -->
+  <div class="tl-entry tl-system-duration">
+    <div class="tl-type"><span class="badge badge-meta">system · turn_duration</span></div>
+    <div class="tl-body">
+      <span class="field">durationMs:</span> 2,645 &nbsp;·&nbsp; <span class="field">messageCount:</span> 10<br>
+      <span class="note">Emitted after every turn (real or error). Records wall-clock time and how many messages are now in the conversation chain. Used for performance monitoring and UI display.</span>
+    </div>
+  </div>
+
+  <!-- 15-17: user — /login command sequence -->
+  <div class="tl-entry tl-user-meta">
+    <div class="tl-type"><span class="badge badge-meta">user (isMeta: true)</span> <span>local-command-caveat</span></div>
+    <div class="tl-body">
+      <span class="field">message.content:</span> <span class="tag-inline">&lt;local-command-caveat&gt;</span> "The messages below were generated by the user while running local commands. DO NOT respond to these…"<br>
+      <span class="note">A wrapper the harness injects before any slash-command sequence to tell Claude not to treat command output as conversation input. isMeta: true marks it as infrastructure, not human speech.</span>
+    </div>
+  </div>
+
+  <div class="tl-entry tl-user">
+    <div class="tl-type"><span class="badge badge-user">user · slash command</span></div>
+    <div class="tl-body">
+      <span class="field">message.content:</span> <span class="tag-inline">&lt;command-name&gt;</span>/login<span class="tag-inline">&lt;/command-name&gt;</span> <span class="tag-inline">&lt;command-message&gt;</span>login<span class="tag-inline">&lt;/command-message&gt;</span> <span class="tag-inline">&lt;command-args&gt;</span><span class="tag-inline">&lt;/command-args&gt;</span><br>
+      <span class="note">Slash commands are stored as user-role messages with structured XML tags. These tags tell Claude (and the harness) that this is a command invocation, not free text. Claude's system prompt defines what each tag means.</span>
+    </div>
+  </div>
+
+  <div class="tl-entry tl-user-meta">
+    <div class="tl-type"><span class="badge badge-meta">user · local command output</span></div>
+    <div class="tl-body">
+      <span class="field">message.content:</span> <span class="tag-inline">&lt;local-command-stdout&gt;</span>Login successful<span class="tag-inline">&lt;/local-command-stdout&gt;</span><br>
+      <span class="note">The result of the /login command, stored as a user message with a stdout tag. Claude is told to ignore this (per the caveat above). The harness just records it for completeness.</span>
+    </div>
+  </div>
+
+  <!-- 18: user — second attempt at same prompt -->
+  <div class="tl-entry tl-user">
+    <div class="tl-type"><span class="badge badge-user">user</span> <span>Second attempt at same prompt · new promptId</span></div>
+    <div class="tl-body">
+      <span class="field">promptId:</span> <span class="val">c10e97c7…</span> ← <strong>different from first attempt (56bc6023…)</strong><br>
+      <span class="field">message.content:</span> <span class="val">"update the pipeline with these decisions: got a decline for the amex role on June 22"</span><br>
+      <span class="note">Same text as attempt #1 but a new promptId. Every time the user re-submits (or the harness re-queues after /login), a fresh promptId is generated. This is how you track how many times a prompt was attempted.</span>
+    </div>
+  </div>
+
+  <!-- 19: attachment — deferred_tools_delta (second — MCP servers pending) -->
+  <div class="tl-entry tl-deferred_tools">
+    <div class="tl-type"><span class="badge badge-attach">attachment · deferred_tools_delta</span> <span>MCP servers now pending</span></div>
+    <div class="tl-body">
+      <span class="field">addedNames:</span> [] ← no new tools this time<br>
+      <span class="field">pendingMcpServers:</span> ["claude.ai Gmail", "claude.ai Google Calendar", "claude.ai Google Drive"]<br>
+      <span class="note">MCP servers sometimes take time to initialise. This delta says "these servers are connecting but not ready yet." The tools they provide will appear in a subsequent deferred_tools_delta once ready.</span>
+    </div>
+  </div>
+
+  <!-- 20: assistant — synthetic 429 -->
+  <div class="tl-entry tl-assistant-error">
+    <div class="tl-type"><span class="badge badge-asst-err">assistant (synthetic error)</span> <span>429 rate limit</span></div>
+    <div class="tl-body">
+      <span class="field">message.model:</span> <span class="err">"&lt;synthetic&gt;"</span><br>
+      <span class="field">message.content[0].text:</span> <span class="val">"API Error: Usage credits required for 1M context · run /usage-credits to turn them on, or /model to switch to standard context"</span><br>
+      <span class="field">error:</span> "rate_limit" &nbsp;·&nbsp; <span class="field">apiErrorStatus:</span> 429<br>
+      <span class="note">After /login succeeded, a 429 hit — the session was trying to use the 1M-context tier which requires usage credits. The harness surfaced this as a formatted error.</span>
+    </div>
+  </div>
+
+  <!-- 21: ai-title -->
+  <div class="tl-entry tl-ai-title">
+    <div class="tl-type"><span class="badge badge-meta">ai-title</span></div>
+    <div class="tl-body">
+      <span class="field">aiTitle:</span> <span class="val">"Update pipeline with Amex role decline"</span><br>
+      <span class="note">Auto-generated session title — likely from a lightweight model call or local heuristic. Appears in the session list in the UI. Generated after the first response attempt even if the response itself was an error.</span>
+    </div>
+  </div>
+
+  <!-- 22-24: /model command sequence -->
+  <div class="tl-entry tl-user-meta">
+    <div class="tl-type"><span class="badge badge-meta">user (isMeta: true)</span> <span>local-command-caveat wrapper</span></div>
+    <div class="tl-body">
+      <span class="field">promptId:</span> <span class="val">a331bbd1…</span> ← shared with the /model command entries<br>
+      <span class="note">Slash commands that produce output (like /model, /login) get their own promptId, shared across the caveat + command + stdout entries.</span>
+    </div>
+  </div>
+
+  <div class="tl-entry tl-user">
+    <div class="tl-type"><span class="badge badge-user">user · slash command</span></div>
+    <div class="tl-body">
+      <span class="field">message.content:</span> <span class="tag-inline">&lt;command-name&gt;</span>/model<span class="tag-inline">&lt;/command-name&gt;</span><br>
+    </div>
+  </div>
+
+  <div class="tl-entry tl-user-meta">
+    <div class="tl-type"><span class="badge badge-meta">user · local command output</span></div>
+    <div class="tl-body">
+      <span class="field">message.content:</span> <span class="tag-inline">&lt;local-command-stdout&gt;</span>Set model to Sonnet 4.6 (default) for this session<span class="tag-inline">&lt;/local-command-stdout&gt;</span>
+    </div>
+  </div>
+
+  <!-- 25: user — third attempt at prompt -->
+  <div class="tl-entry tl-user">
+    <div class="tl-type"><span class="badge badge-user">user</span> <span>Third attempt at same prompt · yet another new promptId</span></div>
+    <div class="tl-body">
+      <span class="field">promptId:</span> <span class="val">8161d4b5…</span> ← third unique promptId for same text<br>
+      <span class="field">message.content:</span> <span class="val">"update the pipeline with these decisions: got a decline for the amex role on June 22"</span>
+    </div>
+  </div>
+
+  <!-- 26: deferred_tools_delta — Gmail/Calendar/Drive now ready -->
+  <div class="tl-entry tl-deferred_tools">
+    <div class="tl-type"><span class="badge badge-attach">attachment · deferred_tools_delta</span> <span>MCP tools now available</span></div>
+    <div class="tl-body">
+      <span class="field">addedNames:</span> 28 tools — all mcp__claude_ai_Gmail__*, mcp__claude_ai_Google_Calendar__*, mcp__claude_ai_Google_Drive__*<br>
+      <span class="field">pendingMcpServers:</span> [] ← all servers now connected<br>
+      <span class="note">The Gmail/Calendar/Drive MCP servers finished initialising. Their tools are now added to the deferred tool registry. Claude can use ToolSearch to load their schemas and call them.</span>
+    </div>
+  </div>
+
+  <!-- 27: assistant — synthetic 429 again -->
+  <div class="tl-entry tl-assistant-error">
+    <div class="tl-type"><span class="badge badge-asst-err">assistant (synthetic error)</span> <span>429 again — still on 1M context tier</span></div>
+    <div class="tl-body">
+      <span class="field">message.content[0].text:</span> <span class="val">"API Error: Usage credits required for 1M context…"</span><br>
+      <span class="note">The /model command didn't take effect in time, or the context was still being sent with 1M headers. The session ends after this.</span>
+    </div>
+  </div>
+
+  <!-- 28: system — turn_duration -->
+  <div class="tl-entry tl-system-duration">
+    <div class="tl-type"><span class="badge badge-meta">system · turn_duration</span></div>
+    <div class="tl-body">
+      <span class="field">durationMs:</span> 540ms &nbsp;·&nbsp; <span class="field">messageCount:</span> 24
+    </div>
+  </div>
+
+  <!-- /exit sequence -->
+  <div class="tl-entry tl-user">
+    <div class="tl-type"><span class="badge badge-user">user · slash command</span> <span>/exit</span></div>
+    <div class="tl-body">
+      <span class="field">promptId:</span> <span class="val">4c8cb017…</span><br>
+      <span class="field">message.content:</span> <span class="tag-inline">&lt;command-name&gt;</span>/exit<span class="tag-inline">&lt;/command-name&gt;</span><br>
+      <span class="note">User exits the session. Output: "See ya!" The file ends here.</span>
+    </div>
+  </div>
+
+</div><!-- end timeline -->
+
+<!-- ── Legend ── -->
+<div class="legend">
+  <h2>Entry Type Reference — Main Thread Only</h2>
+
+  <div class="legend-section">
+    <h3>New types (not in subagent files)</h3>
+
+    <div class="legend-item"><strong>type: "last-prompt"</strong><br>
+      <span class="desc">Written at session open. Records the uuid of the most recent visible message (leafUuid) so the harness can resume scrolling to the right point. Updated every turn. No uuid of its own — not part of the message chain.</span></div>
+
+    <div class="legend-item"><strong>type: "permission-mode"</strong><br>
+      <span class="desc">Records the active permission mode (bypassPermissions / default / etc.) as a session-level snapshot. Written whenever it changes and at session open. The harness uses this to restore state on resume.</span></div>
+
+    <div class="legend-item"><strong>type: "ai-title"</strong><br>
+      <span class="desc">Auto-generated session title, probably produced by a lightweight title-generation call after the first user prompt. Appears in the sessions list UI. Not part of the conversation chain.</span></div>
+
+    <div class="legend-item"><strong>type: "file-history-snapshot"</strong><br>
+      <span class="desc">Snapshot of edited files before a user prompt is processed. Enables undo — the harness can restore file state if something goes wrong. messageId links it to the upcoming user entry.</span></div>
+
+    <div class="legend-item"><strong>type: "system" · subtype: "api_error"</strong><br>
+      <span class="desc">Logged for every failed HTTP call to Anthropic. Contains full error details (status, headers, requestId). The harness retries up to maxRetries times with exponential backoff (retryInMs grows each attempt). After exhausting retries it generates a synthetic assistant message.</span></div>
+
+    <div class="legend-item"><strong>type: "system" · subtype: "turn_duration"</strong><br>
+      <span class="desc">Emitted after every turn completes (real or error). Records wall-clock time (durationMs) and total messages in chain (messageCount). Used for performance tracking and displayed in the UI status line.</span></div>
+
+    <div class="legend-item"><strong>attachment · hook_success</strong><br>
+      <span class="desc">Raw log of a hook execution — command, exitCode, durationMs, stdout, stderr. The stdout for a SessionStart hook contains JSON with <code>hookSpecificOutput.additionalContext</code> holding the skill text.</span></div>
+
+    <div class="legend-item"><strong>attachment · hook_additional_context</strong><br>
+      <span class="desc">The harness extracts the <code>additionalContext</code> from <code>hook_success.stdout</code> and stores it here as a clean array. This is what actually gets injected into Claude's system prompt as a <code>&lt;system-reminder&gt;</code> block.</span></div>
+
+    <div class="legend-item"><strong>attachment · deferred_tools_delta</strong><br>
+      <span class="desc">Incremental update to the available tool list. Tools are registered lazily — not all loaded at session start. Each delta adds/removes/readds tool names. pendingMcpServers lists MCP servers still initialising. Claude sees tool names but must call ToolSearch to get full schemas.</span></div>
+
+    <div class="legend-item"><strong>attachment · agent_listing_delta</strong><br>
+      <span class="desc">Lists available named subagent types (claude, Explore, prep-hiring-manager, etc.) with one-line descriptions. Injected into Claude's context. These come from agent definition files, not SKILL.md.</span></div>
+
+    <div class="legend-item"><strong>attachment · skill_listing</strong><br>
+      <span class="desc">Catalogue of all available skills — name + description from each skill's frontmatter. Injected as a <code>&lt;system-reminder&gt;</code>. Claude uses this to know which skills exist. Full skill content is only loaded when the Skill tool is invoked.</span></div>
+
+    <div class="legend-item"><strong>attachment · opened_file_in_ide</strong><br>
+      <span class="desc">IDE extension context — which file is currently open. Claude receives this as implicit context without the user needing to mention it.</span></div>
+  </div>
+
+  <div class="legend-section">
+    <h3>User entry content tags</h3>
+
+    <div class="legend-item"><strong><span class="tag-inline">&lt;command-name&gt;</span></strong><br>
+      <span class="desc">Wraps the name of a slash command (e.g. /login, /model). Tells Claude and the harness this is a command invocation, not free text.</span></div>
+
+    <div class="legend-item"><strong><span class="tag-inline">&lt;command-message&gt;</span></strong><br>
+      <span class="desc">Human-readable label for the command (often same as command-name).</span></div>
+
+    <div class="legend-item"><strong><span class="tag-inline">&lt;command-args&gt;</span></strong><br>
+      <span class="desc">Arguments passed to the slash command (empty if none).</span></div>
+
+    <div class="legend-item"><strong><span class="tag-inline">&lt;local-command-caveat&gt;</span></strong><br>
+      <span class="desc">Wrapper injected before any slash-command sequence. Tells Claude: "Don't treat what follows as conversation input unless I ask you to." isMeta: true marks it as infrastructure.</span></div>
+
+    <div class="legend-item"><strong><span class="tag-inline">&lt;local-command-stdout&gt;</span></strong><br>
+      <span class="desc">Output of a slash command or local operation, stored as a user message. Claude ignores this per the caveat. The harness records it for completeness and for the conversation replay.</span></div>
+
+    <h3 style="margin-top:16px;">Synthetic assistant entries</h3>
+
+    <div class="legend-item"><strong>model: "&lt;synthetic&gt;"</strong><br>
+      <span class="desc">The harness fabricated this entry — it's not a real Claude response. Used for error messages and other harness-generated text so the conversation chain remains intact.</span></div>
+
+    <div class="legend-item"><strong>stop_reason: "stop_sequence" (on synthetic)</strong><br>
+      <span class="desc">The synthetic stop reason. Real Claude responses use "end_turn" or "tool_use". "stop_sequence" on a synthetic entry is a signal that this is harness-generated, not from the model.</span></div>
+
+    <div class="legend-item"><strong>isApiErrorMessage: true</strong><br>
+      <span class="desc">Explicit flag marking harness-fabricated error messages. Also carries apiErrorStatus (401, 429, etc.) and error (authentication_failed, rate_limit).</span></div>
+
+    <div class="legend-item"><strong>isMeta: true</strong><br>
+      <span class="desc">Marks entries that are infrastructure/metadata, not genuine conversation turns. The harness uses this to filter them out when replaying or displaying history.</span></div>
+
+    <h3 style="margin-top:16px;">promptId in main thread</h3>
+    <div class="legend-item"><span class="desc">
+      In the subagent file there was 1 promptId (the original delegation). In a main thread file, <strong>each user-initiated turn gets a new promptId</strong>. This includes:<br>
+      • Every time the user types a message<br>
+      • Every time the harness re-queues the same message after an error<br>
+      • Slash commands that generate output (/model, /login)<br><br>
+      This file has 5 promptIds for what was effectively one user intent: 1 original attempt + 2 re-queues after errors + /model + /exit.
+    </span></div>
+  </div>
+</div>
+
+<!-- ── Insights ── -->
+<div class="insight">
+  <strong>The skill content pipeline: SKILL.md → hook → &lt;EXTREMELY_IMPORTANT&gt; → &lt;system-reminder&gt;</strong><br>
+  1. A skill is defined in a <code>.md</code> file with frontmatter. The body contains the instruction text including any tags the skill author puts there (like <code>&lt;EXTREMELY_IMPORTANT&gt;</code> — that's just markdown text inside the file).<br>
+  2. A SessionStart hook runs at session open and calls a script that reads the <em>using-superpowers</em> skill and outputs it as JSON in stdout under <code>hookSpecificOutput.additionalContext</code>.<br>
+  3. The harness logs the raw hook run as a <strong>hook_success</strong> attachment, then extracts the content and creates a <strong>hook_additional_context</strong> attachment.<br>
+  4. That content is injected into Claude's actual API prompt as a <strong>&lt;system-reminder&gt;</strong> block — the tag wrapping is added by the harness, not by the skill file.<br>
+  5. Claude reads it as system-level instruction before processing the user's message.<br><br>
+
+  <strong>The skill_listing is separate from the hook content.</strong>
+  The <code>skill_listing</code> attachment is a directory (names + one-liners). The hook content is the full text of one specific skill. Both end up in Claude's context but via different mechanisms.<br><br>
+
+  <strong>A session with zero real tokens.</strong>
+  All 3 assistant entries have <code>model: "&lt;synthetic&gt;"</code> and <code>usage: all zeros</code>. The session never reached the Anthropic API successfully. Contrast with the subagent file where 23 real HTTP calls happened and 65k+ tokens were processed.
+</div>
+
+</body>
+</html>

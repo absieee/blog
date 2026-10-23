@@ -1,0 +1,6 @@
+{%- comment -%}
+Renders post content, rewriting Obsidian-style vault paths (assets/...) to site paths.
+Usage: {% include body.html html=content %}
+{%- endcomment -%}
+{%- assign site_assets = 'src="' | append: site.baseurl | append: '/assets/' -%}
+{{ include.html | replace: 'src="assets/', site_assets | replace: 'src="../assets/', site_assets }}

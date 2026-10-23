@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Claude Code JSONL — Sequence Diagram</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Menlo', 'Courier New', monospace;
+    font-size: 13px;
+    padding: 32px;
+  }
+  h1 { color: #e6edf3; font-size: 18px; margin-bottom: 6px; font-weight: 600; }
+  .subtitle { color: #6e7681; font-size: 12px; margin-bottom: 24px; }
+
+  /* ── Stats grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 36px;
+  }
+  .stat-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .stat-card .stat-label { font-size: 10px; color: #6e7681; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .stat-card .stat-value { font-size: 22px; font-weight: 700; color: #e6edf3; }
+  .stat-card .stat-sub { font-size: 11px; color: #8b949e; margin-top: 3px; }
+  .stat-card.accent-green { border-color: #238636; }
+  .stat-card.accent-blue  { border-color: #1f6feb; }
+  .stat-card.accent-red   { border-color: #da3633; }
+  .stat-card.accent-purple{ border-color: #553086; }
+
+  /* ── Token breakdown table ── */
+  .section-title {
+    font-size: 14px;
+    color: #e6edf3;
+    font-weight: 700;
+    margin: 36px 0 12px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 8px;
+  }
+  .tok-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+  .tok-table th {
+    text-align: left;
+    padding: 6px 10px;
+    color: #8b949e;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid #30363d;
+    background: #161b22;
+  }
+  .tok-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #21262d;
+    vertical-align: top;
+  }
+  .tok-table tr:hover td { background: #161b22; }
+  .tok-table .req-id { color: #6e7681; font-size: 10px; font-family: monospace; }
+  .tok-table .tools-list { display: flex; flex-wrap: wrap; gap: 3px; }
+  .tool-tag {
+    display: inline-block;
+    font-size: 10px;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-weight: 600;
+  }
+  .tool-Bash    { background: #1a1f0a; color: #a3c44a; border: 1px solid #4a6010; }
+  .tool-Read    { background: #0a1a2a; color: #58a6ff; border: 1px solid #1f6feb; }
+  .tool-Write   { background: #1a0a2a; color: #c084fc; border: 1px solid #553086; }
+  .tool-WebSearch { background: #2a1a0a; color: #d29922; border: 1px solid #7a5608; }
+  .tool-WebFetch  { background: #2a1008; color: #ffa198; border: 1px solid #6e1a1a; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .num.in      { color: #4caf76; }
+  .num.cw      { color: #d29922; }
+  .num.cr      { color: #58a6ff; }
+  .num.out     { color: #c084fc; }
+  .spike       { background: #2a1a00 !important; }
+  .spike td    { border-left: 2px solid #d29922; }
+  .write-heavy { background: #1a0a2a !important; }
+  .write-heavy td { border-left: 2px solid #c084fc; }
+
+  /* ── Lanes ── */
+  .diagram {
+    display: grid;
+    grid-template-columns: 160px 1fr 160px 1fr 160px;
+    gap: 0;
+    position: relative;
+  }
+  .lane-header {
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+  .lane-user   { background: #1c2a1e; color: #56d364; border: 1px solid #238636; }
+  .lane-gap    { background: transparent; }
+  .lane-claude { background: #1a2233; color: #58a6ff; border: 1px solid #1f6feb; }
+  .lane-tool   { background: #2a1a1a; color: #f78166; border: 1px solid #da3633; }
+
+  /* ── Timeline rows ── */
+  .row {
+    display: contents;
+  }
+  .cell {
+    min-height: 24px;
+    border-left: 2px solid;
+    position: relative;
+    padding: 0 4px;
+  }
+  .cell-user   { border-color: #238636; }
+  .cell-gap    { border: none; display: flex; align-items: center; justify-content: center; }
+  .cell-claude { border-color: #1f6feb; }
+  .cell-tool   { border-color: #da3633; }
+
+  /* ── Messages (bubbles) ── */
+  .msg {
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 6px 0;
+    line-height: 1.5;
+    position: relative;
+  }
+  .msg-user   { background: #162c1a; border: 1px solid #238636; color: #56d364; }
+  .msg-claude { background: #111d2f; border: 1px solid #1f6feb; color: #79c0ff; }
+  .msg-tool   { background: #200f0f; border: 1px solid #6e1a1a; color: #ffa198; }
+  .msg-result { background: #1c1208; border: 1px solid #5a3e08; color: #d29922; }
+
+  .msg .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.6;
+    margin-bottom: 4px;
+  }
+  .msg .body { font-size: 12px; }
+  .msg .body code {
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+  }
+
+  /* ── Arrows ── */
+  .arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    font-size: 11px;
+    color: #8b949e;
+    gap: 6px;
+    position: relative;
+  }
+  .arrow::before {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.4;
+  }
+  .arrow::after {
+    content: '▶';
+    font-size: 10px;
+  }
+  .arrow.left::before { display: none; }
+  .arrow.left::after { content: '◀'; }
+  .arrow.left { flex-direction: row-reverse; }
+  .arrow.left .arrow-label { order: 1; }
+
+  /* ── Token pill ── */
+  .tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .tok {
+    font-size: 10px;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: 600;
+  }
+  .tok-in      { background: #1a2c1a; color: #4caf76; border: 1px solid #238636; }
+  .tok-cache-w { background: #2a1f0a; color: #d29922; border: 1px solid #7a5608; }
+  .tok-cache-r { background: #0a1a2a; color: #58a6ff; border: 1px solid #1f6feb; }
+  .tok-out     { background: #1a0a2a; color: #c084fc; border: 1px solid #553086; }
+
+  /* ── Section divider ── */
+  .divider {
+    grid-column: 1 / -1;
+    border-top: 1px dashed #30363d;
+    margin: 8px 0;
+    position: relative;
+  }
+  .divider span {
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0d1117;
+    padding: 0 12px;
+    color: #6e7681;
+    font-size: 11px;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    margin-top: 40px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .legend h2 { font-size: 13px; color: #e6edf3; margin-bottom: 12px; grid-column: 1/-1; }
+  .legend-section h3 { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .legend-item { margin-bottom: 8px; line-height: 1.5; }
+  .legend-item strong { color: #e6edf3; }
+  .legend-item .desc { color: #8b949e; font-size: 11px; }
+
+  /* ── Key insight box ── */
+  .insight {
+    margin-top: 24px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 3px solid #58a6ff;
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #8b949e;
+  }
+  .insight strong { color: #e6edf3; }
+
+  .spacer { height: 8px; grid-column: 1/-1; }
+  .same-req-badge {
+    font-size: 9px;
+    background: #1a2233;
+    border: 1px solid #1f6feb;
+    color: #58a6ff;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<h1>Claude Code JSONL — Conversation Sequence</h1>
+<p class="subtitle">How entries in the .jsonl file map to a real agent turn · file: agent-a94b8d3c93f7dbe9c.jsonl</p>
+
+<!-- ── Stats ── -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total entries</div>
+    <div class="stat-value">115</div>
+    <div class="stat-sub">68 assistant · 47 user</div>
+  </div>
+  <div class="stat-card accent-blue">
+    <div class="stat-label">Unique UUIDs</div>
+    <div class="stat-value">115</div>
+    <div class="stat-sub">one per JSONL entry — always unique</div>
+  </div>
+  <div class="stat-card accent-green">
+    <div class="stat-label">sourceToolAssistantUUIDs</div>
+    <div class="stat-value">45</div>
+    <div class="stat-sub">one per tool call · links result → caller</div>
+  </div>
+  <div class="stat-card accent-blue">
+    <div class="stat-label">Unique requestIds</div>
+    <div class="stat-value">23</div>
+    <div class="stat-sub">= 23 HTTP calls to Anthropic API<br>multiple JSONL entries share each</div>
+  </div>
+  <div class="stat-card accent-blue">
+    <div class="stat-label">Unique message.ids</div>
+    <div class="stat-value">23</div>
+    <div class="stat-sub">= requestIds (1-to-1 in this file)</div>
+  </div>
+  <div class="stat-card accent-purple">
+    <div class="stat-label">Unique promptIds</div>
+    <div class="stat-value">3</div>
+    <div class="stat-sub">3 distinct user prompts in this session<br>(sub-prompts from skill orchestration)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Unique sessionIds</div>
+    <div class="stat-value">1</div>
+    <div class="stat-sub">whole file = one session</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Unique agentIds</div>
+    <div class="stat-value">1</div>
+    <div class="stat-sub">whole file = one subagent (isSidechain: true for all 115 entries)</div>
+  </div>
+  <div class="stat-card accent-red">
+    <div class="stat-label">Tool calls (tool_use)</div>
+    <div class="stat-value">45</div>
+    <div class="stat-sub">Read ×24 · WebFetch ×5 · WebSearch ×4 · Bash ×8 · Write ×4</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Content block types</div>
+    <div class="stat-value">6</div>
+    <div class="stat-sub">thinking ×11 · text ×12 · tool_use ×45<br>tool_result ×45 · string ×1 · document ×1</div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────── DIAGRAM ───────────────────────────────── -->
+<div class="diagram">
+
+  <!-- Headers -->
+  <div class="lane-header lane-user">USER / TOOL RESULT</div>
+  <div class="lane-header lane-gap" style="background:transparent;border:none;"></div>
+  <div class="lane-header lane-claude">CLAUDE (assistant)</div>
+  <div class="lane-header lane-gap" style="background:transparent;border:none;"></div>
+  <div class="lane-header lane-tool">TOOL EXECUTION</div>
+
+  <!-- ──────────────── TURN 1: Initial prompt ──────────────── -->
+  <div class="divider" style="grid-column:1/-1;"><span>TURN 1 — Initial prompt (entry type: "user")</span></div>
+
+  <!-- User sends prompt -->
+  <div class="cell cell-user">
+    <div class="msg msg-user">
+      <div class="label">type: "user" · role: "user"</div>
+      <div class="body">
+        <code>uuid</code>: a77ac576…<br>
+        <code>parentUuid</code>: <em>null</em> ← first message<br>
+        <code>promptId</code>: e41adf0a… ← stable for whole prompt<br>
+        <code>sessionId</code>: 12e6ecdc…<br>
+        <code>agentId</code>: a94b8d3c… ← subagent<br>
+        <code>isSidechain</code>: true ← spawned agent<br>
+        <br>
+        message.content = "Prepare Abhishek…"<br>
+        <em>(plain string — human turn)</em>
+      </div>
+    </div>
+  </div>
+  <div class="cell cell-gap"><div class="arrow" style="color:#238636;">→ API call</div></div>
+  <div class="cell cell-claude"></div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-tool"></div>
+
+  <!-- ──────────────── API CALL 1 (streaming, 3 JSONL entries) ──────────────── -->
+  <div class="divider" style="grid-column:1/-1;"><span>API CALL 1 — one HTTP request → 3 JSONL entries (same requestId, same message.id)</span></div>
+
+  <!-- thinking block -->
+  <div class="cell cell-user"></div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-claude">
+    <div class="msg msg-claude">
+      <div class="label">type: "assistant" · content[0].type: "thinking" <span class="same-req-badge">req_011CcZLssqcDphSgYLwC1qq5</span></div>
+      <div class="body">
+        <code>uuid</code>: 43da9945…<br>
+        <code>parentUuid</code>: a77ac576… ← points to user msg<br>
+        <code>message.id</code>: msg_019gP8… ← same API message<br>
+        <code>attributionAgent</code>: "prep-hiring-manager"<br>
+        <br>
+        content[0].type = <strong>"thinking"</strong><br>
+        content[0].thinking = "" <em>(redacted)</em><br>
+        content[0].signature = "EqoC…" ← integrity seal<br>
+        <br>
+        stop_reason: <em>null</em> ← streaming not done yet
+        <div class="tokens">
+          <span class="tok tok-in">input: 3</span>
+          <span class="tok tok-cache-w">cache_create: 10,281</span>
+          <span class="tok tok-cache-r">cache_read: 0</span>
+          <span class="tok tok-out">output: 1</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-tool"></div>
+
+  <!-- text block -->
+  <div class="cell cell-user"></div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-claude">
+    <div class="msg msg-claude">
+      <div class="label">type: "assistant" · content[0].type: "text" <span class="same-req-badge">req_011CcZLssqcDphSgYLwC1qq5</span></div>
+      <div class="body">
+        <code>uuid</code>: 8af94740… <em>(new uuid per block)</em><br>
+        <code>parentUuid</code>: 43da9945… ← previous block<br>
+        <code>message.id</code>: msg_019gP8… ← <strong>same API message</strong><br>
+        <br>
+        content[0].type = <strong>"text"</strong><br>
+        content[0].text = "Starting file discovery…"<br>
+        <br>
+        stop_reason: <em>null</em>
+        <div class="tokens">
+          <span class="tok tok-in">input: 3</span>
+          <span class="tok tok-cache-w">cache_create: 10,281</span>
+          <span class="tok tok-cache-r">cache_read: 0</span>
+          <span class="tok tok-out">output: 1</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-tool"></div>
+
+  <!-- tool_use block -->
+  <div class="cell cell-user"></div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-claude">
+    <div class="msg msg-claude">
+      <div class="label">type: "assistant" · content[0].type: "tool_use" <span class="same-req-badge">req_011CcZLssqcDphSgYLwC1qq5</span></div>
+      <div class="body">
+        <code>uuid</code>: 1d98cda7…<br>
+        <code>parentUuid</code>: 8af94740…<br>
+        <code>message.id</code>: msg_019gP8… ← <strong>still same API msg</strong><br>
+        <br>
+        content[0].type = <strong>"tool_use"</strong><br>
+        content[0].id = "toolu_01Nmf3…" ← links to result<br>
+        content[0].name = "Bash"<br>
+        content[0].input.command = "ls /data/goodfit/"<br>
+        content[0].caller.type = "direct"<br>
+        <br>
+        stop_reason: <em>null</em> → tool running
+        <div class="tokens">
+          <span class="tok tok-in">input: 3</span>
+          <span class="tok tok-cache-w">cache_create: 10,281</span>
+          <span class="tok tok-cache-r">cache_read: 0</span>
+          <span class="tok tok-out">output: 1</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cell cell-gap"><div class="arrow" style="color:#da3633;">→ exec</div></div>
+  <div class="cell cell-tool">
+    <div class="msg msg-tool">
+      <div class="label">Bash runs locally</div>
+      <div class="body">
+        ls /data/goodfit/<br>
+        <em>stdout: "CV Abhi…\nGoodfit JD…"</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────── Tool result returned as "user" entry ──────────────── -->
+  <div class="divider" style="grid-column:1/-1;"><span>Tool result → logged as a "user" entry (the harness injects it back into the conversation)</span></div>
+
+  <div class="cell cell-user">
+    <div class="msg msg-result">
+      <div class="label">type: "user" · role: "user" (tool result)</div>
+      <div class="body">
+        <code>uuid</code>: 751cac52…<br>
+        <code>parentUuid</code>: 1d98cda7… ← points to tool_use msg<br>
+        <code>promptId</code>: e41adf0a… ← <strong>same promptId</strong> as original<br>
+        <code>sourceToolAssistantUUID</code>: 1d98cda7… ← links back<br>
+        <br>
+        message.content[0].type = <strong>"tool_result"</strong><br>
+        message.content[0].tool_use_id = "toolu_01Nmf3…"<br>
+        message.content[0].content = "CV Abhi…\nGoodfit JD…"<br>
+        message.content[0].is_error = false<br>
+        <br>
+        <em>toolUseResult.stdout / .stderr also stored here</em><br>
+        <em>No usage/token fields — this is not an API call</em>
+      </div>
+    </div>
+  </div>
+  <div class="cell cell-gap"><div class="arrow" style="color:#238636;">→ next API call</div></div>
+  <div class="cell cell-claude"></div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-tool"></div>
+
+  <!-- ──────────────── API CALL 2: now cache_read kicks in ──────────────── -->
+  <div class="divider" style="grid-column:1/-1;"><span>API CALL 2 — new requestId, cache_read now populated</span></div>
+
+  <div class="cell cell-user"></div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-claude">
+    <div class="msg msg-claude">
+      <div class="label">type: "assistant" · content: thinking + text + tool_use <span class="same-req-badge">req_011CcZLtEQckqXzH…</span></div>
+      <div class="body">
+        <code>message.id</code>: msg_012EGFD… ← <strong>new API message</strong><br>
+        <code>requestId</code>: req_011CcZLtEQ… ← <strong>new request</strong><br>
+        <br>
+        Claude now sees full prior context in its prompt.<br>
+        The system prompt + original user message are <strong>read from cache</strong>.<br>
+        The new tool_result is <strong>new tokens</strong> (tiny).<br>
+        More files are read → <strong>new cache written</strong> for next turn.<br>
+        <div class="tokens">
+          <span class="tok tok-in">input: 1 ← only the tiny new bit</span>
+          <span class="tok tok-cache-r">cache_read: 10,281 ← cheap!</span>
+          <span class="tok tok-cache-w">cache_create: 5,707 ← new chunk added</span>
+          <span class="tok tok-out">output: 9</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cell cell-gap"></div>
+  <div class="cell cell-tool"></div>
+
+  <div class="spacer"></div>
+
+</div><!-- end diagram -->
+
+<!-- ───────────────────────────────── TOKEN BREAKDOWN ───────────────────────────────── -->
+<div class="section-title">Per-API-call Token Breakdown (all 23 requests in this file)</div>
+<p style="color:#6e7681;font-size:11px;margin-bottom:12px;">
+  Each row = one HTTP request to Anthropic. Token counts are from the final assistant entry in that request (where stop_reason ≠ null).<br>
+  <span style="color:#d29922;">■</span> orange row = input_token spike (parallel tool results landing uncached) &nbsp;&nbsp;
+  <span style="color:#c084fc;">■</span> purple row = large Write (output-heavy)
+</p>
+
+<table class="tok-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Tools called (in parallel unless noted)</th>
+      <th class="num">input</th>
+      <th class="num">cache_create</th>
+      <th class="num">cache_read</th>
+      <th class="num">output</th>
+      <th>Note</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Bash">Bash</span><span class="tool-tag tool-Bash">Bash</span><span class="tool-tag tool-Read">Read</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">ls goodfit/ · ls story-bank/ · Read research_goodfit.md</div></td>
+      <td class="num in">3</td><td class="num cw">10,281</td><td class="num cr">0</td><td class="num out">287</td>
+      <td style="color:#6e7681;font-size:10px;">First call. Cache empty — everything written fresh. Large system prompt + original user message = 10k tokens cached.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Bash">Bash</span><span class="tool-tag tool-WebSearch">WebSearch</span><span class="tool-tag tool-WebSearch">WebSearch</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">tailored CV · read PDF · Paul McKenna ×2</div></td>
+      <td class="num in">1</td><td class="num cw">5,707</td><td class="num cr">10,281</td><td class="num out">405</td>
+      <td style="color:#6e7681;font-size:10px;">Cache kicks in. Only 1 fresh token (the tool_result header). Reads 10k from cache. Writes 5.7k new chunk.</td>
+    </tr>
+    <tr class="spike">
+      <td>3</td>
+      <td><div class="tools-list"><span class="tool-tag tool-WebSearch">WebSearch</span><span class="tool-tag tool-WebFetch">WebFetch</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Paul McKenna web · 3 story files</div></td>
+      <td class="num in">1</td><td class="num cw">4,197</td><td class="num cr">15,988</td><td class="num out">484</td>
+      <td style="color:#6e7681;font-size:10px;">5 parallel tools. Results will land as uncached input in the NEXT call.</td>
+    </tr>
+    <tr class="spike" style="background:#2a1e00 !important;">
+      <td>4 ⚡</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-WebFetch">WebFetch</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">5 more story files + LinkedIn fetch</div></td>
+      <td class="num in" style="color:#f0a500;font-weight:700;">3,850</td><td class="num cw">1,143</td><td class="num cr">20,185</td><td class="num out">452</td>
+      <td style="color:#d29922;font-size:10px;"><strong>← THE SPIKE.</strong> The 5 tool results from call #3 (3 story files + web data) landed simultaneously as fresh uncached input. No cache checkpoint had captured them yet. Only 1,143 new tokens get checkpointed this turn (just the assistant's tool_use calls).</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-WebFetch">WebFetch</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">5 builder/sky story files + fetch</div></td>
+      <td class="num in">1</td><td class="num cw">9,342</td><td class="num cr">21,328</td><td class="num out">8</td>
+      <td style="color:#6e7681;font-size:10px;">Spike resolved. The large cache_create (9,342) checkpoints the previously-uncached 3,850 tool results from call #3 <em>plus</em> the 6 new tool results from call #4. Fresh input back to 1.</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-Bash">Bash</span><span class="tool-tag tool-WebFetch">WebFetch</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">last story · ls raw/ · LinkedIn fetch</div></td>
+      <td class="num in">1</td><td class="num cw">4,173</td><td class="num cr">30,670</td><td class="num out">495</td>
+      <td style="color:#6e7681;font-size:10px;">Cache snowball growing. 30k tokens now served from cache.</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Bash">Bash</span><span class="tool-tag tool-WebSearch">WebSearch</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">extract PDF text · search Goodfit product</div></td>
+      <td class="num in">1</td><td class="num cw">1,547</td><td class="num cr">34,843</td><td class="num out">276</td>
+      <td style="color:#6e7681;font-size:10px;"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span><span class="tool-tag tool-WebFetch">WebFetch</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Read JD PDF · fetch Goodfit site</div></td>
+      <td class="num in">1</td><td class="num cw">1,174</td><td class="num cr">36,390</td><td class="num out">11</td>
+      <td style="color:#6e7681;font-size:10px;"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Bash">Bash</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">date +%Y%m%d (get today's date)</div></td>
+      <td class="num in">3</td><td class="num cw">6,921</td><td class="num cr">37,564</td><td class="num out">2,008</td>
+      <td style="color:#6e7681;font-size:10px;">output: 2,008 — Claude is synthesising all research into a plan before the big Write.</td>
+    </tr>
+    <tr class="write-heavy">
+      <td>10</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Write">Write</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Write prep_goodfit_paul-mckenna.md</div></td>
+      <td class="num in">1</td><td class="num cw">46,510</td><td class="num cr">0</td><td class="num out" style="color:#c084fc;font-weight:700;">7,143</td>
+      <td style="color:#c084fc;font-size:10px;"><strong>Most expensive call.</strong> output: 7,143 = writing the full prep doc. cache_read: 0 is anomalous — cache likely expired or reset at this Write boundary. Writes a new 46k-token cache chunk.</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Write">Write</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Write prototype-ideas.md</div></td>
+      <td class="num in">1</td><td class="num cw">7,214</td><td class="num cr">46,510</td><td class="num out">2</td>
+      <td style="color:#6e7681;font-size:10px;">output: 2 — placeholder; the actual prototype ideas generation is in the output of the next call.</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Re-read prep doc to verify</div></td>
+      <td class="num in">1</td><td class="num cw">2,985</td><td class="num cr">53,724</td><td class="num out">1</td>
+      <td style="color:#6e7681;font-size:10px;"></td>
+    </tr>
+    <tr>
+      <td>13–18</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Read">Read</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Iterative re-reads of prep + prototype docs to check/refine</div></td>
+      <td class="num in">1</td><td class="num cw">~300–3,305</td><td class="num cr">56k–58k</td><td class="num out">62–189</td>
+      <td style="color:#6e7681;font-size:10px;">6 calls, each reading a file to check it before moving on. Cache grows steadily. Tiny writes per call.</td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Bash">Bash</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">python3: extract prep doc section for cheat sheet</div></td>
+      <td class="num in">1</td><td class="num cw">407</td><td class="num cr">61,811</td><td class="num out">508</td>
+      <td style="color:#6e7681;font-size:10px;"></td>
+    </tr>
+    <tr class="write-heavy">
+      <td>20</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Write">Write</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Write cheatsheet.md</div></td>
+      <td class="num in">1</td><td class="num cw">508</td><td class="num cr">62,218</td><td class="num out" style="color:#c084fc;font-weight:700;">2,390</td>
+      <td style="color:#6e7681;font-size:10px;">output: 2,390 = writing markdown cheat sheet</td>
+    </tr>
+    <tr class="write-heavy">
+      <td>21</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Write">Write</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">Write cheatsheet.html (dark-themed)</div></td>
+      <td class="num in">1</td><td class="num cw">2,460</td><td class="num cr">62,726</td><td class="num out" style="color:#c084fc;font-weight:700;">5,985</td>
+      <td style="color:#6e7681;font-size:10px;">output: 5,985 = writing full HTML with styling</td>
+    </tr>
+    <tr>
+      <td>22</td>
+      <td><div class="tools-list"><span class="tool-tag tool-Bash">Bash</span></div><div style="color:#6e7681;font-size:10px;margin-top:3px;">ls -lh to verify all files written</div></td>
+      <td class="num in">1</td><td class="num cw">6,055</td><td class="num cr">65,186</td><td class="num out">49</td>
+      <td style="color:#6e7681;font-size:10px;">Verification step. 65k tokens now served from cache on every call.</td>
+    </tr>
+    <tr style="background:#1a1208 !important;">
+      <td>23</td>
+      <td><div class="tools-list"><span style="color:#6e7681;font-size:11px;">No tools — final response</span></div></td>
+      <td class="num in">—</td><td class="num cw">—</td><td class="num cr">—</td><td class="num out">—</td>
+      <td style="color:#6e7681;font-size:10px;">stop_reason: "end_turn" — one in the whole file. Agent done.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ───────────────────────────────── LEGEND ───────────────────────────────── -->
+<div class="legend">
+  <h2>Field Reference</h2>
+
+  <div class="legend-section">
+    <h3>Identity Fields</h3>
+    <div class="legend-item"><strong>uuid</strong><br><span class="desc">Unique ID for this single JSONL entry. Every entry has one.</span></div>
+    <div class="legend-item"><strong>parentUuid</strong><br><span class="desc">Points to the previous entry — forms the conversation chain. null on the first message.</span></div>
+    <div class="legend-item"><strong>promptId</strong><br><span class="desc">Stable across all entries belonging to the same user-initiated prompt. Appears on user entries only. Links tool results back to the original turn.</span></div>
+    <div class="legend-item"><strong>sessionId</strong><br><span class="desc">The top-level session (matches the folder name). Shared by all entries in a session.</span></div>
+    <div class="legend-item"><strong>agentId</strong><br><span class="desc">Which subagent produced this. Matches the filename. Main thread has no agentId.</span></div>
+    <div class="legend-item"><strong>requestId</strong><br><span class="desc">One HTTP request to the Anthropic API. Multiple JSONL entries share the same requestId when they are different content blocks (thinking / text / tool_use) streamed from one call.</span></div>
+    <div class="legend-item"><strong>message.id</strong><br><span class="desc">The Anthropic API's own message ID (msg_…). Same as requestId grouping — all blocks from one API call share this.</span></div>
+    <div class="legend-item"><strong>attributionAgent</strong><br><span class="desc">Which skill/agent config triggered this API call (e.g. "prep-hiring-manager").</span></div>
+    <div class="legend-item"><strong>sourceToolAssistantUUID</strong><br><span class="desc">On tool_result entries: points to the assistant entry that made the tool_use call.</span></div>
+  </div>
+
+  <div class="legend-section">
+    <h3>Token / Usage Fields</h3>
+
+    <div class="legend-item">
+      <strong style="color:#4caf76;">input_tokens</strong><br>
+      <span class="desc">Tokens sent to the model that were <em>not</em> in the cache. Billed at the standard input rate (~$3/Mtok for Sonnet). In a long conversation this is usually tiny because most context is cached.</span>
+    </div>
+    <div class="legend-item">
+      <strong style="color:#d29922;">cache_creation_input_tokens</strong><br>
+      <span class="desc">Tokens being <em>written</em> into the prompt cache for the first time this turn. Costs ~1.25× standard input (you pay a premium to store it). Worth it because future turns read it cheaply.</span>
+    </div>
+    <div class="legend-item">
+      <strong style="color:#58a6ff;">cache_read_input_tokens</strong><br>
+      <span class="desc">Tokens <em>read</em> from the cache instead of re-sent. Costs ~0.1× standard input — 10× cheaper than fresh input. This is why caching is so valuable in long agentic runs.</span>
+    </div>
+    <div class="legend-item">
+      <strong>cache_creation.ephemeral_5m_input_tokens</strong><br>
+      <span class="desc">Subset of cache_creation going into the 5-minute TTL cache bucket. Used for short-lived context (tool results mid-turn). Cheaper to store than 1h.</span>
+    </div>
+    <div class="legend-item">
+      <strong>cache_creation.ephemeral_1h_input_tokens</strong><br>
+      <span class="desc">Subset going into the 1-hour TTL bucket. Used for longer-lived context like the system prompt or large files read early in a session.</span>
+    </div>
+    <div class="legend-item">
+      <strong style="color:#c084fc;">output_tokens</strong><br>
+      <span class="desc">Tokens the model generated. Billed at the output rate (~$15/Mtok for Sonnet — ~5× input). Kept small by streaming: intermediate "thinking" and "text" blocks often show output: 1 while streaming.</span>
+    </div>
+
+    <h3 style="margin-top:16px;">Content / Type Fields</h3>
+    <div class="legend-item"><strong>type: "user"</strong><br><span class="desc">Either a real human message (plain string content) or an injected tool result (content is array with tool_result object). Both use role: "user" in the Anthropic API.</span></div>
+    <div class="legend-item"><strong>type: "assistant"</strong><br><span class="desc">One content block from Claude — thinking, text, or tool_use. One API call produces one or more of these entries.</span></div>
+    <div class="legend-item"><strong>content[].type: "thinking"</strong><br><span class="desc">Extended thinking block. The actual thought is redacted in storage; a cryptographic signature is kept so Anthropic can verify integrity.</span></div>
+    <div class="legend-item"><strong>content[].type: "tool_use"</strong><br><span class="desc">Claude calling a tool. Contains id (links to result), name (Bash / Read / WebSearch etc), input (args), caller.type (direct = Claude called it; harness = framework called it).</span></div>
+    <div class="legend-item"><strong>content[].type: "tool_result"</strong><br><span class="desc">The tool's output, returned as a user-role message. tool_use_id links it back to the tool_use entry. is_error flags failures.</span></div>
+    <div class="legend-item"><strong>isSidechain: true</strong><br><span class="desc">
+      <strong style="color:#e6edf3;">Every entry in this file has isSidechain: true — all 115.</strong><br>
+      This means the whole file is a detached branch of the conversation, not the main interactive thread. When Claude Code spawns a subagent (via the Agent tool), it opens a new JSONL file in the <code>subagents/</code> directory and all its entries are tagged isSidechain: true.<br><br>
+      The <em>main thread</em> (the file named by sessionId, one level up) has isSidechain: false. It contains the user's typed messages, Claude's top-level replies, and the Agent tool_use entry that kicked this subagent off. The subagent's work happens entirely in its own file, in parallel with anything else the main thread might be doing.<br><br>
+      Practical implication: if you're parsing costs or debugging, you need to look in <em>both</em> places — the main session file and all files under <code>subagents/</code>. The token usage in this file is entirely separate from (and additive to) the main thread's usage.
+    </span></div>
+    <div class="legend-item"><strong>stop_reason</strong><br><span class="desc">null while streaming mid-turn. "tool_use" when Claude stopped to wait for a tool. "end_turn" on a final response. "max_tokens" if truncated.</span></div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────── KEY INSIGHT ───────────────────────────────── -->
+<div class="insight">
+  <strong>Why are there 3 entries for one API call?</strong>
+  Claude Code streams each content block (thinking → text → tool_use) and logs each as a separate JSONL entry in real-time.
+  They share the same <code>requestId</code> and <code>message.id</code> — that's how you know they came from one HTTP request.
+  The <code>parentUuid</code> chain links them sequentially. Early blocks in a streaming response show <code>output: 1</code> — a placeholder. Read the final block in each request (where <code>stop_reason ≠ null</code>) for accurate totals.<br><br>
+
+  <strong>Why does call #4 spike to 3,850 input_tokens?</strong>
+  Call #3 ran <strong>5 tools in parallel</strong> (WebSearch + WebFetch + 3 story file Reads). All 5 results landed simultaneously in the conversation as tool_result entries. When call #4 started, those 5 results were the most recent additions to the prompt — they hadn't been incorporated into a cache checkpoint yet. So they came in as fresh (uncached) input_tokens: 3,850.<br>
+  The cache only extends to where the <em>previous generation</em> ended. Anything appended after that (tool results) is always fresh until the caching system creates a new checkpoint that includes them.<br><br>
+
+  <strong>Why does call #5 recover to input_tokens: 1 despite also receiving 6 tool results?</strong>
+  Call #5 writes a large <code>cache_create: 9,342</code>. This checkpoint captures the previously-uncached 3,850 tokens from call #3's results <em>plus</em> call #4's 6 new tool results in one go. Once checkpointed, those tokens are served from cache at 0.1× cost for every subsequent call. The spike was one-time; calls #6–22 all show input_tokens: 1.<br><br>
+
+  <strong>The cache snowball.</strong>
+  Call #1: cache_read 0. Call #10: cache_read 0 (anomalous reset, likely a Write boundary). Call #22: cache_read 65,186.
+  By the end, 65k tokens — the entire conversation history, all files read, all web results — is served from cache on every single API call at 10× discount. This is why long agentic runs are cheaper than they look from the output count alone.
+</div>
+
+</body>
+</html>

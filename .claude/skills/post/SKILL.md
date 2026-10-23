@@ -1,9 +1,9 @@
 ---
-name: new-blog-post
+name: post
 description: Use when starting a new post on the personal Jekyll blog at ~/Desktop/CODE/personal/blog. Creates the post file with correct frontmatter and a category stub if the category is new.
 ---
 
-# new-blog-post
+# post
 
 Scaffolds a new post for the Jekyll blog at `~/Desktop/CODE/personal/blog`.
 
@@ -14,7 +14,7 @@ Scaffolds a new post for the Jekyll blog at `~/Desktop/CODE/personal/blog`.
 3. **Categories** — one or more from the existing set: `til`, `product`, `tech`, `personal` — or a new one
 4. **Summary** — one-sentence description shown on the homepage
 
-If the user types `/new-blog-post my post title`, treat it as the title and derive the slug from it.
+If the user types `/post my post title`, treat it as the title and derive the slug from it.
 
 ## Post file
 
